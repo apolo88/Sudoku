@@ -1,12 +1,28 @@
 from Sudoku import *
-from DrawConsoleImpl import *
+import sys
 
 def main():    
-    draw = DrawConsoleImpl()
-    
-    sudoku = Sudoku("files/sudokuToVerify.txt");
-    #print(sudoku.getMatrix())
-    draw.draw_sudoku(sudoku)
+    #validates the file solution and checks if it is correct or not
+    #verifySudokuSolution()
+
+    #solves the sudoku on the file to solve and saves it in the solution file
+    solveSudoku()
+
+def verifySudokuSolution():
+    sudoku = Sudoku("files/sudokuToVerify.txt")
+    sudoku.draw_sudoku()
+    sys.stdin.read(1)
+    print(sudoku.verify())
+
+def clear_screen(self):
+    """Extract text from the currently loaded file."""
+    pass
+
+def solveSudoku():
+    sudoku = Sudoku("files/sudokuToSolve.txt")
+    sudoku.solve()
+    #sudoku.draw_sudoku()
+    #sudoku.save_to_file()
 
 # this means that if this script is executed, then 
 # main() will be executed
