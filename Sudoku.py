@@ -17,9 +17,11 @@ class Sudoku:
 
     matrix = 0
     blockStartCordMap = {0:Coord(0,0), 1:Coord(0,3), 2:Coord(0,6), 3:Coord(3,0), 4:Coord(3,3), 5:Coord(3,6), 6:Coord(6,0), 7:Coord(6,3), 8:Coord(6,6)}
-    blockIndexByRow = {0:[0,1,2], 1:[3,4,5], 2:[6,7,8], 3:[0,1,2], 4:[3,4,5], 5:[6,7,8], 6:[0,1,2], 7:[3,4,5], 8:[6,7,8]}
-    blockIndexByCol = {0:[0,1,2], 1:[0,1,2], 2:[0,1,2], 3:[3,4,5], 4:[3,4,5], 5:[3,4,5], 6:[6,7,8], 7:[6,7,8], 8:[6,7,8]}
-    
+    colsToAnalyzeByBlock = {0:[0,1,2], 1:[3,4,5], 2:[6,7,8], 3:[0,1,2], 4:[3,4,5], 5:[6,7,8], 6:[0,1,2], 7:[3,4,5], 8:[6,7,8]}
+    rowsToAnalyzeByBlock = {0:[0,1,2], 1:[0,1,2], 2:[0,1,2], 3:[3,4,5], 4:[3,4,5], 5:[3,4,5], 6:[6,7,8], 7:[6,7,8], 8:[6,7,8]}
+    blocksToAnalyzeByRow = {0:[0,1,2], 1:[0,1,2], 2:[0,1,2], 3:[3,4,5], 4:[3,4,5], 5:[3,4,5], 6:[6,7,8], 7:[6,7,8], 8:[6,7,8]}
+    blocksToAnalyzeByCol = {0:[0,3,6], 1:[1,4,7], 2:[2,5,8], 3:[0,3,6], 4:[1,4,7], 5:[2,5,8], 6:[0,3,6], 7:[1,4,7], 8:[2,5,8]}
+
     # key of the position (RowCol) and the set of possible values
     unfilledPosValues = {}
     unfilledPosKeysByBlock = {}
@@ -56,9 +58,11 @@ class Sudoku:
 
 
     ############################################
+    ############################################
     ### VALIDATION
     ############################################
-    
+    ############################################
+
     #Validates if a sudoku is valid or not
     def verify(self):
         #check rows
@@ -112,15 +116,16 @@ class Sudoku:
 
 
     ############################################
+    ############################################
     ### RESOLUTION
     ############################################
+    ############################################
+
 
     #init method to solve the sudoku
     def solve(self):
         self.draw_sudoku()
         sys.stdin.read(1)
-
-        #print(str(self.unfilledPosKeysByBlock))
 
         # loops again all the positions if they were not solved yet
         while len(self.unfilledPosKeysByBlock) > 0:
@@ -128,29 +133,29 @@ class Sudoku:
             dictKeys = self.unfilledPosKeysByBlock.copy().keys()
             for block in dictKeys:
                 
-                #print("block numero %i" % block)
-                #print(str(self.unfilledPosKeysByBlock))
-                
                 #TODO deep dive on why seems to work more performant with copy
                 self.checkDiscardAndFillPosValues(self.unfilledPosKeysByBlock[block].copy())
 
-                #print("block numero %i" % block)
-                #print(str(self.unfilledPosValues))
-
                 # checks after first validation if there are still items to complete in the block
                 if block in self.unfilledPosKeysByBlock:
-                    #print(str(self.unfilledPosKeysByBlock[block]))
                     self.checkParallelsMethod(self.unfilledPosKeysByBlock[block])
-                    #pass
 
             self.draw_sudoku()
             sys.stdin.read(1)
 
 
+    ############################################
+    ############################################
+    ### RESOLUTION ALGORITHMS
+    ############################################
+    ############################################
+
+
+
+    ### DISCARD METHOD
+
     def checkDiscardAndFillPosValues(self, unfilledPos):
-        #print("list %s" % str(unfilledPos))
         for key in unfilledPos:
-            #print("key %s" % key)
             if key not in self.unfilledPosValues:
                 self.unfilledPosValues[key] = self.getPosValues(int(key[0]), int(key[1]))
 
@@ -158,9 +163,92 @@ class Sudoku:
                 self.fillNumber(int(key[0]), int(key[1]), self.unfilledPosValues[key].pop(), "Discard")
 
 
+    
+    ### CHECK PARALLELS METHOD
+
+    def checkParallelsMethod(self, unfilledPos):
+        for key in unfilledPos:
+            row = int(key[0])
+            col = int(key[1])
+
+            blockNumber = self.getBlockNumber(row,col)
+
+            #for each possible number
+            candValue = -1
+            for num in self.unfilledPosValues[str(row) + str(col)]:
+                print("cords: %s analyzing %i" % (str(row) + str(col), int(num)))
+                if (self.validForParallelPerRow(row, col, num, blockNumber) and self.verifyNumberPerBlockRow(num, row, blockNumber)) or (self.validForParallelPerCol(row, col, num, blockNumber) and self.verifyNumberPerBlockCol(num, col, blockNumber)):
+                    candValue = int(num)
+                    break
+                
+            if candValue >= 0:
+                self.fillNumber(row, col, num, "Parallel")
+
+
+    def validForParallelPerRow(self, row, col, num, blockNumber):
+        for altCol in set(self.colsToAnalyzeByBlock[blockNumber]) - set([col]):
+            #print("altCol %s" % altCol)
+            if self.matrix[row][altCol] == 'n' and num in self.unfilledPosValues[str(row) + str(altCol)]:
+                return False
+
+        #print("validRow")
+        return True
+
+    #TODO Review method, calculating wrong
+    def validForParallelPerCol(self, row, col, num, blockNumber):
+        for altRow in set(self.rowsToAnalyzeByBlock[blockNumber]) - set([row]):
+            #print("altRow %s" % altRow)
+            #if self.matrix[altRow][col] == 'n':
+                #print(str(self.unfilledPosValues))
+            if self.matrix[altRow][col] == 'n' and num in self.unfilledPosValues[str(altRow) + str(col)]:
+                return False
+
+        print("validCol")
+        return True
+
+    def verifyNumberPerBlockRow(self, num, currentRow, currentBlock):
+        #loop resting blocks in the same row
+        for block in set(self.blocksToAnalyzeByRow[currentBlock]) - set([currentBlock]):
+            found = False
+            coord = self.blockStartCordMap.get(block)
+            for row in set([coord.x, coord.x + 1, coord.x + 2]) - set([currentRow]):
+                for col in range (coord.y, coord.y + 3):
+                    if self.matrix[row][col] == num:
+                        found = True
+                        break;
+
+            if not found:
+                return False
+
+        print("number applied per row")
+        return True
+
+    #Review method, calculating wrong 
+    def verifyNumberPerBlockCol(self, num, currentCol, currentBlock):
+        #loop resting blocks in the same row
+        for block in set(self.blocksToAnalyzeByCol[currentBlock]) - set([currentBlock]):
+            found = False
+            coord = self.blockStartCordMap.get(block)
+            for row in range (coord.x, coord.x + 3):
+                for col in set([coord.y, coord.y + 1, coord.y + 2]) - set([currentCol]):
+                    if self.matrix[row][col] == num:
+                        found = True
+                        break;
+
+            if not found:
+                return False
+
+        print("number applied per col")
+        return True
+
+    #####################################################
+    ### Complete cell and recalculate possible Values ###
+    #####################################################
+
     def fillNumber(self, row, col, num, meth):
         self.matrix[row][col] = num
-        #print("%s: value %s in row %i col %i" % (meth, self.matrix[row][col], row, col))
+
+        print("Number filled, Row %s Col %s Value %s with Method: %s" % (row, col, num, meth))
 
         #removes key from the unfilled values map
         del self.unfilledPosValues[str(row) + str(col)]
@@ -190,7 +278,6 @@ class Sudoku:
         for col in set([0,1,2,3,4,5,6,7,8]) - set([currentCol]):
             key = str(row)+str(col)
             if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
-                #print("entre aqui a borrar relacionados por Row %s" % key)
                 self.unfilledPosValues[key].remove(num)
 
 
@@ -198,7 +285,6 @@ class Sudoku:
         for row in set([0,1,2,3,4,5,6,7,8]) - set([currentRow]):
             key = str(row)+str(col)
             if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
-                #print("entre aqui a borrar relacionados por Col %s" % key)
                 self.unfilledPosValues[key].remove(num)
 
 
@@ -209,84 +295,13 @@ class Sudoku:
                 if currentRow != row or currentCol != col:
                     key = str(row)+str(col)
                     if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
-                        #print("entre aqui a borrar relacionados por Block %s" % key)
                         self.unfilledPosValues[key].remove(num)
 
 
-    def checkParallelsMethod(self, unfilledPos):
-        for key in unfilledPos:
-            row = int(key[0])
-            col = int(key[1])
+    #####################################################
+    ### Possible Values Analysis ####
+    #####################################################
 
-            blockNumber = self.getBlockNumber(row,col)
-
-            #for each possible number
-            candValue = -1
-            for num in self.unfilledPosValues[str(row) + str(col)]:
-                print("cords: %s analyzing %i" % (str(row) + str(col), int(num)))
-                if (self.validForParallelPerRow(row, col, num, blockNumber) and self.verifyNumberPerBlockRow(num, row, blockNumber)) or (self.validForParallelPerCol(row, col, num, blockNumber) and self.verifyNumberPerBlockCol(num, col, blockNumber)):
-                    candValue = int(num)
-                    break
-                
-            if candValue >= 0:
-                self.fillNumber(row, col, num, "Parallel per Row")
-
-
-    def validForParallelPerRow(self, row, col, num, blockNumber):
-        for altCol in set(self.blockIndexByRow[blockNumber]) - set([col]):
-            print("altCol %s" % altCol)
-            if self.matrix[row][altCol] == 'n' and num in self.unfilledPosValues[str(row) + str(altCol)]:
-                return False
-
-        print("validRow")
-        return True
-
-    #TODO Review method, calculating wrong
-    def validForParallelPerCol(self, row, col, num, blockNumber):
-        for altRow in set(self.blockIndexByCol[blockNumber]) - set([row]):
-            print("altRow %s" % altRow)
-            if self.matrix[altRow][col] == 'n':
-                print(str(self.unfilledPosValues))
-            if self.matrix[altRow][col] == 'n' and num in self.unfilledPosValues[str(altRow) + str(col)]:
-                return False
-
-        print("validCol")
-        return False
-
-    def verifyNumberPerBlockRow(self, num, currentRow, currentBlock):
-        #loop resting blocks in the same row
-        for block in set(self.blockIndexByCol[currentBlock]) - set([currentBlock]):
-            found = False
-            coord = self.blockStartCordMap.get(block)
-            for row in set([coord.x, coord.x + 1, coord.x + 2]) - set([currentRow]):
-                for col in range (coord.y, coord.y + 3):
-                    if self.matrix[row][col] == num:
-                        found = True
-                        break;
-
-            if not found:
-                return False
-
-        print("number applied per row")
-        return True
-
-    #Review method, calculating wrong 
-    def verifyNumberPerBlockCol(self, num, currentCol, currentBlock):
-        #loop resting blocks in the same row
-        for block in set(self.blockIndexByRow[currentBlock]) - set([currentBlock]):
-            found = False
-            coord = self.blockStartCordMap.get(block)
-            for row in range (coord.x, coord.x + 3):
-                for col in set([coord.y, coord.y + 1, coord.y + 2]) - set([currentCol]):
-                    if self.matrix[row][col] == num:
-                        found = True
-                        break;
-
-            if not found:
-                return False
-
-        print("number applied per col")
-        return False
 
     def getPosValues(self, x, y):
         numsToVerify = set()
@@ -329,10 +344,12 @@ class Sudoku:
         return blockValues
 
    
-
+    ############################################
     ############################################
     ### PRINTING
     ############################################
+    ############################################
+
 
     def get_text_matrix(self) -> str:
         rows, cols = 9, 9
