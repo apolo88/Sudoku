@@ -17,8 +17,8 @@ class Sudoku:
 
     matrix = 0
     blockStartCordMap = {0:Coord(0,0), 1:Coord(0,3), 2:Coord(0,6), 3:Coord(3,0), 4:Coord(3,3), 5:Coord(3,6), 6:Coord(6,0), 7:Coord(6,3), 8:Coord(6,6)}
-
-    #unfilledValues = 0
+    blockIndexByRow = {0:[0,1,2], 1:[3,4,5], 2:[6,7,8], 3:[0,1,2], 4:[3,4,5], 5:[6,7,8], 6:[0,1,2], 7:[3,4,5], 8:[6,7,8]}
+    blockIndexByCol = {0:[0,1,2], 1:[0,1,2], 2:[0,1,2], 3:[3,4,5], 4:[3,4,5], 5:[3,4,5], 6:[6,7,8], 7:[6,7,8], 8:[6,7,8]}
     
     # key of the position (RowCol) and the set of possible values
     unfilledPosValues = {}
@@ -43,11 +43,6 @@ class Sudoku:
                 self.matrix[row][col] = line[col]
 
                 if self.matrix[row][col] == 'n':
-                    #self.unfilledValues = self.unfilledValues + 1
-
-                    # adds to the map the empty set
-                    self.unfilledPosValues[str(row) + str(col)] = set()
-                    
                     # loads that unfilled position to the correct block
                     blockNumber = self.getBlockNumber(row,col)
                     if blockNumber in self.unfilledPosKeysByBlock:
@@ -120,79 +115,186 @@ class Sudoku:
     ### RESOLUTION
     ############################################
 
-
-    
-
-
-
     #init method to solve the sudoku
     def solve(self):
         self.draw_sudoku()
         sys.stdin.read(1)
 
+        #print(str(self.unfilledPosKeysByBlock))
+
         # loops again all the positions if they were not solved yet
-        #while self.unfilledValues > 0:
-        print("missing values: %s" % str(self.unfilledPosValues))
-        while len(self.unfilledPosValues) > 0:
-            #for row in range (0,self.dim):
-                #for col in range (0,self.dim):
-            
+        while len(self.unfilledPosKeysByBlock) > 0:
 
-            cloneDict = self.unfilledPosKeysByBlock.copy()
-            for block in cloneDict:
-                print("blocknumb: %i" % block)
+            dictKeys = self.unfilledPosKeysByBlock.copy().keys()
+            for block in dictKeys:
                 
-                #coord = self.blockStartCordMap.get(block)
-                #for row in range (coord.x, coord.x + 3):
-                    #for col in range (coord.y, coord.y + 3):
+                #print("block numero %i" % block)
+                #print(str(self.unfilledPosKeysByBlock))
+                
+                #TODO deep dive on why seems to work more performant with copy
+                self.checkDiscardAndFillPosValues(self.unfilledPosKeysByBlock[block].copy())
 
-                for key in cloneDict[block]:
-                        row = int(key[0])
-                        col = int(key[1])
-                        print("key: %s" % key+':'+self.matrix[row][col])
-                        if self.matrix[row][col] == 'n':
-                            
-                            print("to complete ")
-                            
-                            if self.completePosition(row, col):
+                #print("block numero %i" % block)
+                #print(str(self.unfilledPosValues))
 
-                                print("completed")
+                # checks after first validation if there are still items to complete in the block
+                if block in self.unfilledPosKeysByBlock:
+                    #print(str(self.unfilledPosKeysByBlock[block]))
+                    self.checkParallelsMethod(self.unfilledPosKeysByBlock[block])
+                    #pass
 
-                                # self.unfilledValues = self.unfilledValues - 1
-                                #del self.unfilledPosValues[str(row) + str(col)]
-                                self.markAsCompleted(row, col)
-                                
-                                #print("missing values: %i" % self.unfilledValues)
-                                print("missing values: %i" % len(self.unfilledPosValues))
-                    
             self.draw_sudoku()
             sys.stdin.read(1)
 
 
-    def completePosition(self, x, y):
-        if self.bruteForceMet(x, y):
-            return True
+    def checkDiscardAndFillPosValues(self, unfilledPos):
+        #print("list %s" % str(unfilledPos))
+        for key in unfilledPos:
+            #print("key %s" % key)
+            if key not in self.unfilledPosValues:
+                self.unfilledPosValues[key] = self.getPosValues(int(key[0]), int(key[1]))
+
+            if len(self.unfilledPosValues[key]) == 1:
+                self.fillNumber(int(key[0]), int(key[1]), self.unfilledPosValues[key].pop(), "Discard")
 
 
-    def bruteForceMet(self, x, y):
+    def fillNumber(self, row, col, num, meth):
+        self.matrix[row][col] = num
+        #print("%s: value %s in row %i col %i" % (meth, self.matrix[row][col], row, col))
+
+        #removes key from the unfilled values map
+        del self.unfilledPosValues[str(row) + str(col)]
+
+        # removes position from the blocks map
+        blockNumber = self.getBlockNumber(row,col)
+        self.unfilledPosKeysByBlock[blockNumber].remove(str(row) + str(col))
+
+        self.removePossibleValues(row, col, blockNumber, num)
+
+        #TODO analyze to call recursively to fillNumber if the left number is one
+        #if len(self.unfilledPosValues[str(row) + str(col)]) == 1:
+            #self.fillNumber(row, col, posNumbers.pop(), "Discard")
+
+        # if the last item was removed then removes the entire block
+        if len(self.unfilledPosKeysByBlock[blockNumber]) == 0:
+            del self.unfilledPosKeysByBlock[blockNumber]
+
+
+    def removePossibleValues(self, row, col, blockNumber, num):
+        self.removePossibleValuesRow(row, col, num)
+        self.removePossibleValuesCol(row, col, num)
+        self.removePossibleValuesBlock(row, col, blockNumber, num)
+
+
+    def removePossibleValuesRow(self, row, currentCol, num):
+        for col in set([0,1,2,3,4,5,6,7,8]) - set([currentCol]):
+            key = str(row)+str(col)
+            if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
+                #print("entre aqui a borrar relacionados por Row %s" % key)
+                self.unfilledPosValues[key].remove(num)
+
+
+    def removePossibleValuesCol(self, currentRow, col, num):
+        for row in set([0,1,2,3,4,5,6,7,8]) - set([currentRow]):
+            key = str(row)+str(col)
+            if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
+                #print("entre aqui a borrar relacionados por Col %s" % key)
+                self.unfilledPosValues[key].remove(num)
+
+
+    def removePossibleValuesBlock(self, currentRow, currentCol, blockNumber, num):
+        coord = self.blockStartCordMap.get(blockNumber)
+        for row in range (coord.x, coord.x + 3):
+            for col in range (coord.y, coord.y + 3):
+                if currentRow != row or currentCol != col:
+                    key = str(row)+str(col)
+                    if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
+                        #print("entre aqui a borrar relacionados por Block %s" % key)
+                        self.unfilledPosValues[key].remove(num)
+
+
+    def checkParallelsMethod(self, unfilledPos):
+        for key in unfilledPos:
+            row = int(key[0])
+            col = int(key[1])
+
+            blockNumber = self.getBlockNumber(row,col)
+
+            #for each possible number
+            candValue = -1
+            for num in self.unfilledPosValues[str(row) + str(col)]:
+                print("cords: %s analyzing %i" % (str(row) + str(col), int(num)))
+                if (self.validForParallelPerRow(row, col, num, blockNumber) and self.verifyNumberPerBlockRow(num, row, blockNumber)) or (self.validForParallelPerCol(row, col, num, blockNumber) and self.verifyNumberPerBlockCol(num, col, blockNumber)):
+                    candValue = int(num)
+                    break
+                
+            if candValue >= 0:
+                self.fillNumber(row, col, num, "Parallel per Row")
+
+
+    def validForParallelPerRow(self, row, col, num, blockNumber):
+        for altCol in set(self.blockIndexByRow[blockNumber]) - set([col]):
+            print("altCol %s" % altCol)
+            if self.matrix[row][altCol] == 'n' and num in self.unfilledPosValues[str(row) + str(altCol)]:
+                return False
+
+        print("validRow")
+        return True
+
+    #TODO Review method, calculating wrong
+    def validForParallelPerCol(self, row, col, num, blockNumber):
+        for altRow in set(self.blockIndexByCol[blockNumber]) - set([row]):
+            print("altRow %s" % altRow)
+            if self.matrix[altRow][col] == 'n':
+                print(str(self.unfilledPosValues))
+            if self.matrix[altRow][col] == 'n' and num in self.unfilledPosValues[str(altRow) + str(col)]:
+                return False
+
+        print("validCol")
+        return False
+
+    def verifyNumberPerBlockRow(self, num, currentRow, currentBlock):
+        #loop resting blocks in the same row
+        for block in set(self.blockIndexByCol[currentBlock]) - set([currentBlock]):
+            found = False
+            coord = self.blockStartCordMap.get(block)
+            for row in set([coord.x, coord.x + 1, coord.x + 2]) - set([currentRow]):
+                for col in range (coord.y, coord.y + 3):
+                    if self.matrix[row][col] == num:
+                        found = True
+                        break;
+
+            if not found:
+                return False
+
+        print("number applied per row")
+        return True
+
+    #Review method, calculating wrong 
+    def verifyNumberPerBlockCol(self, num, currentCol, currentBlock):
+        #loop resting blocks in the same row
+        for block in set(self.blockIndexByRow[currentBlock]) - set([currentBlock]):
+            found = False
+            coord = self.blockStartCordMap.get(block)
+            for row in range (coord.x, coord.x + 3):
+                for col in set([coord.y, coord.y + 1, coord.y + 2]) - set([currentCol]):
+                    if self.matrix[row][col] == num:
+                        found = True
+                        break;
+
+            if not found:
+                return False
+
+        print("number applied per col")
+        return False
+
+    def getPosValues(self, x, y):
         numsToVerify = set()
         numsToVerify.update(self.getRowValues(x))
         numsToVerify.update(self.getColValues(y))
         numsToVerify.update(self.getBlockValues(self.getBlockNumber(x,y)))
 
-        if len(numsToVerify) == 8:
-            leftNumbers = set(['1','2','3','4','5','6','7','8','9'])
-            for i in numsToVerify:
-                leftNumbers.remove(i)
-
-            numToFill = leftNumbers.pop()
-            self.matrix[x][y] = numToFill
-
-            print("BruteForce: value %s in row %i col %i" % (numToFill, x, y))
-
-            return True
-        else:
-            return False
+        return set(['1','2','3','4','5','6','7','8','9']) - numsToVerify
 
 
     def getRowValues(self, row):
@@ -226,18 +328,7 @@ class Sudoku:
         
         return blockValues
 
-
-    def markAsCompleted(self, row, col):
-        #removes key from the unfilled values map
-        del self.unfilledPosValues[str(row) + str(col)]
-
-        # removes position from the blocks map
-        blockNumber = self.getBlockNumber(row,col)
-        self.unfilledPosKeysByBlock[blockNumber].remove(str(row) + str(col))
-
-        # if the last item was removed then removes the entire block
-        if len(self.unfilledPosKeysByBlock[blockNumber]) == 0:
-            del self.unfilledPosKeysByBlock[blockNumber]
+   
 
     ############################################
     ### PRINTING
