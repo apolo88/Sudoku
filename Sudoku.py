@@ -151,7 +151,6 @@ class Sudoku:
     ############################################
 
 
-
     ### DISCARD METHOD
 
     def checkDiscardAndFillPosValues(self, unfilledPos):
@@ -162,9 +161,8 @@ class Sudoku:
             if len(self.unfilledPosValues[key]) == 1:
                 self.fillNumber(int(key[0]), int(key[1]), self.unfilledPosValues[key].pop(), "Discard")
 
-
     
-    ### CHECK PARALLELS METHOD
+    ### PARALLELS METHOD
 
     def checkParallelsMethod(self, unfilledPos):
         for key in unfilledPos:
@@ -176,7 +174,6 @@ class Sudoku:
             #for each possible number
             candValue = -1
             for num in self.unfilledPosValues[str(row) + str(col)]:
-                print("cords: %s analyzing %i" % (str(row) + str(col), int(num)))
                 if (self.validForParallelPerRow(row, col, num, blockNumber) and self.verifyNumberPerBlockRow(num, row, blockNumber)) or (self.validForParallelPerCol(row, col, num, blockNumber) and self.verifyNumberPerBlockCol(num, col, blockNumber)):
                     candValue = int(num)
                     break
@@ -187,24 +184,19 @@ class Sudoku:
 
     def validForParallelPerRow(self, row, col, num, blockNumber):
         for altCol in set(self.colsToAnalyzeByBlock[blockNumber]) - set([col]):
-            #print("altCol %s" % altCol)
             if self.matrix[row][altCol] == 'n' and num in self.unfilledPosValues[str(row) + str(altCol)]:
                 return False
 
-        #print("validRow")
         return True
 
-    #TODO Review method, calculating wrong
+
     def validForParallelPerCol(self, row, col, num, blockNumber):
         for altRow in set(self.rowsToAnalyzeByBlock[blockNumber]) - set([row]):
-            #print("altRow %s" % altRow)
-            #if self.matrix[altRow][col] == 'n':
-                #print(str(self.unfilledPosValues))
             if self.matrix[altRow][col] == 'n' and num in self.unfilledPosValues[str(altRow) + str(col)]:
                 return False
 
-        print("validCol")
         return True
+
 
     def verifyNumberPerBlockRow(self, num, currentRow, currentBlock):
         #loop resting blocks in the same row
@@ -220,12 +212,11 @@ class Sudoku:
             if not found:
                 return False
 
-        print("number applied per row")
         return True
 
-    #Review method, calculating wrong 
+
     def verifyNumberPerBlockCol(self, num, currentCol, currentBlock):
-        #loop resting blocks in the same row
+        #loop resting blocks in the same col
         for block in set(self.blocksToAnalyzeByCol[currentBlock]) - set([currentBlock]):
             found = False
             coord = self.blockStartCordMap.get(block)
@@ -238,12 +229,13 @@ class Sudoku:
             if not found:
                 return False
 
-        print("number applied per col")
         return True
+
 
     #####################################################
     ### Complete cell and recalculate possible Values ###
     #####################################################
+
 
     def fillNumber(self, row, col, num, meth):
         self.matrix[row][col] = num
@@ -258,10 +250,6 @@ class Sudoku:
         self.unfilledPosKeysByBlock[blockNumber].remove(str(row) + str(col))
 
         self.removePossibleValues(row, col, blockNumber, num)
-
-        #TODO analyze to call recursively to fillNumber if the left number is one
-        #if len(self.unfilledPosValues[str(row) + str(col)]) == 1:
-            #self.fillNumber(row, col, posNumbers.pop(), "Discard")
 
         # if the last item was removed then removes the entire block
         if len(self.unfilledPosKeysByBlock[blockNumber]) == 0:
@@ -383,13 +371,11 @@ class Sudoku:
 
     def draw_sudoku(self): 
         print(self.get_text_matrix())
-        #print("missing values: %i" % self.unfilledValues)          
         print("missing values: %i" % len(self.unfilledPosValues))
 
 
     def save_to_file(self):
         result = self.get_text_matrix()
-        #print(result)
 
         f = open("files/sudokuSolution.txt", "w")
         f.write(result)
