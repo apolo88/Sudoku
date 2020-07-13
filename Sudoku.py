@@ -124,6 +124,7 @@ class Sudoku:
 
         # Iterate the unifilledPos to complete them
         while len(self.unfilledPosValues) > 0:
+            unfilledPosBeforeProcess = len(self.unfilledPosValues)
             for key in self.unfilledPosValues.copy().keys():
                 if key in self.unfilledPosValues:
                     #looks if it has only one pos value
@@ -133,6 +134,11 @@ class Sudoku:
                     #analyze the different possibilities of unique pos Value per block, row and col
                     if self.checkUniquePosValueInters(key):
                         continue
+
+            #if unfilledPosBeforeProcess == len(self.unfilledPosValues):
+            #    self.analyzeTechPos()
+            #    continue
+            #    pass
 
             self.draw_sudoku()
             sys.stdin.read(1)
@@ -207,6 +213,25 @@ class Sudoku:
                 return False
 
         return True
+
+
+    ### TECH DISCARD METHOD
+
+    def analyzeTechPos(self):
+        for block in blockStartCordMap.keys():
+            for row in range (coord.x, coord.x + 3):
+                for col in range (coord.y, coord.y + 3):
+                if self.matrix[row][col] != 'n':
+            
+            # create list of unfilled positions with the possible values
+            # put them in a map by row and col inside the block only the values that are unique in that row or col
+
+            #loop the rows and cols just assigned and call the methods to remove possibilities 
+                # for each row
+                    # removePossibleValuesRow
+
+                # for each col
+                    # removePossibleValuesCol
 
 
     #####################################################
