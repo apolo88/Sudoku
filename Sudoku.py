@@ -18,6 +18,8 @@ class Sudoku:
 
     matrix = 0
     blockStartCordMap = {0:Coord(0,0), 1:Coord(0,3), 2:Coord(0,6), 3:Coord(3,0), 4:Coord(3,3), 5:Coord(3,6), 6:Coord(6,0), 7:Coord(6,3), 8:Coord(6,6)}
+    rowsByBlock = {0:[0,1,2], 1:[0,1,2], 2:[0,1,2], 3:[3,4,5], 4:[3,4,5], 5:[3,4,5], 6:[6,7,8], 7:[6,7,8], 8:[6,7,8]}
+    colsByBlock = {0:[0,1,2], 1:[3,4,5], 2:[6,7,8], 3:[0,1,2], 4:[3,4,5], 5:[6,7,8], 6:[0,1,2], 7:[3,4,5], 8:[6,7,8]}
 
     # key of the position (RowCol) and the set of possible values
     unfilledPosValues = {}
@@ -135,8 +137,10 @@ class Sudoku:
                     if self.checkUniquePosValueInters(key):
                         continue
 
-            #if unfilledPosBeforeProcess == len(self.unfilledPosValues):
-            #    self.analyzeTechPos()
+            if unfilledPosBeforeProcess == len(self.unfilledPosValues):
+                print("look for alayze tech pos")
+            
+                self.analyzeTechPos()
             #    continue
             #    pass
 
@@ -218,20 +222,69 @@ class Sudoku:
     ### TECH DISCARD METHOD
 
     def analyzeTechPos(self):
-        for block in blockStartCordMap.keys():
+        for block in self.blockStartCordMap.keys():
+            
+            coord = self.blockStartCordMap.get(block)      
+            
+            #fills in map the unique pos values for each row
             for row in range (coord.x, coord.x + 3):
+                # get pos values of the row
+                posValues = set()            
                 for col in range (coord.y, coord.y + 3):
-                if self.matrix[row][col] != 'n':
+                    if self.matrix[row][col] == 'n':
+                        posValues.update(self.unfilledPosValues[str(row)+str(col)])
+            
+                if len(posValues) == 0:
+                    continue
+
+                #loop other rows to mantain only uniques
+                for rowAlt in set([coord.x, coord.x + 1, coord.x + 2]) - set([row]):
+                    for col in range (coord.y, coord.y + 3):
+                        if self.matrix[rowAlt][col] == 'n':
+                            posValues.difference_update(self.unfilledPosValues[str(rowAlt)+str(col)])
+
+                #if there are any values found that are uniques for the row then calls the remove logic
+                if len(posValues) != 0:
+                    print("Block %i Row %i pos values in the row %s " % (block, row, str(posValues)))
+                    self.removePossibleValuesRow(row, self.colsByBlock.get(block), posValues)
+
+            #fills in map the unique pos values for each col
+            for col in range (coord.y, coord.y + 3):
+                # get pos values of the col
+                posValues = set()            
+                for row in range (coord.x, coord.x + 3):
+                    if self.matrix[row][col] == 'n':
+                        posValues.update(self.unfilledPosValues[str(row)+str(col)])
+            
+                if len(posValues) == 0:
+                    continue
+
+                #loop other cols to mantain only uniques
+                for colAlt in set([coord.y, coord.y + 1, coord.y + 2]) - set([col]):
+                    for row in range (coord.x, coord.x + 3):
+                        if self.matrix[row][colAlt] == 'n':
+                            posValues.difference_update(self.unfilledPosValues[str(row)+str(colAlt)])
+
+                #if there are any values found that are uniques for the row then calls the remove logic
+                if len(posValues) != 0:
+                    print("Block %i Col %i pos values in the col %s " % (block, col, str(posValues)))
+                    self.removePossibleValuesCol(self.rowsByBlock.get(block), col, posValues)
+
+            
+            
             
             # create list of unfilled positions with the possible values
             # put them in a map by row and col inside the block only the values that are unique in that row or col
 
-            #loop the rows and cols just assigned and call the methods to remove possibilities 
-                # for each row
-                    # removePossibleValuesRow
+            
 
-                # for each col
-                    # removePossibleValuesCol
+            #loop the rows and cols just assigned and call the methods to remove possibilities 
+            #for row in techPosByRow.keys():
+            #    self.removePossibleValuesRow(row, self.colsByBlock.get(block), techPosByRow.get(row))
+
+            print("Block %i analyzed" % block)
+            #for col in techPosByCol.keys():
+            #    removePossibleValuesCol(self.rowsByBlock.get(block), col, techPosByRow.get(col))
 
 
     #####################################################
@@ -251,23 +304,25 @@ class Sudoku:
 
 
     def removePossibleValues(self, row, col, blockNumber, num):
-        self.removePossibleValuesRow(row, col, num)
-        self.removePossibleValuesCol(row, col, num)
+        self.removePossibleValuesRow(row, [col], [num])
+        self.removePossibleValuesCol([row], col, [num])
         self.removePossibleValuesBlock(row, col, blockNumber, num)
 
 
-    def removePossibleValuesRow(self, row, currentCol, num):
-        for col in set([0,1,2,3,4,5,6,7,8]) - set([currentCol]):
+    def removePossibleValuesRow(self, row, currentCols, nums):
+        for col in set([0,1,2,3,4,5,6,7,8]) - set(currentCols):
             key = str(row)+str(col)
-            if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
-                self.unfilledPosValues[key].remove(num)
+            for num in nums:
+                if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
+                    self.unfilledPosValues[key].remove(num)
 
 
-    def removePossibleValuesCol(self, currentRow, col, num):
-        for row in set([0,1,2,3,4,5,6,7,8]) - set([currentRow]):
+    def removePossibleValuesCol(self, currentRows, col, nums):
+        for row in set([0,1,2,3,4,5,6,7,8]) - set(currentRows):
             key = str(row)+str(col)
-            if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
-                self.unfilledPosValues[key].remove(num)
+            for num in nums:
+                if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
+                    self.unfilledPosValues[key].remove(num)
 
 
     def removePossibleValuesBlock(self, currentRow, currentCol, blockNumber, num):
