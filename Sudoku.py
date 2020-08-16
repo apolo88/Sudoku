@@ -1,5 +1,6 @@
 import sys
 import math
+import copy
 
 class Sudoku:
     
@@ -16,8 +17,9 @@ class Sudoku:
     #General Attributes
     dim = 9
     blocksIdMap = {'00':0, '01':1, '02':2, '10':3, '11':4, '12':5, '20':6, '21':7, '22':8}
+    deepLevel = 0
 
-    matrix = 0
+    matrix = [[]]
     blockStartCordMap = {0:Coord(0,0), 1:Coord(0,3), 2:Coord(0,6), 3:Coord(3,0), 4:Coord(3,3), 5:Coord(3,6), 6:Coord(6,0), 7:Coord(6,3), 8:Coord(6,6)}
     rowsByBlock = {0:[0,1,2], 1:[0,1,2], 2:[0,1,2], 3:[3,4,5], 4:[3,4,5], 5:[3,4,5], 6:[6,7,8], 7:[6,7,8], 8:[6,7,8]}
     colsByBlock = {0:[0,1,2], 1:[3,4,5], 2:[6,7,8], 3:[0,1,2], 4:[3,4,5], 5:[6,7,8], 6:[0,1,2], 7:[3,4,5], 8:[6,7,8]}
@@ -124,7 +126,10 @@ class Sudoku:
 
         # Loads all poss values and fills in case is only one number
         self.loadPosValues()
+        self.deepSolve()
 
+
+    def deepSolve(self):
         # Iterate the unifilledPos to complete them
         while len(self.unfilledPosValues) > 0:
             unfilledPosBeforeProcess = len(self.unfilledPosValues)
@@ -140,20 +145,23 @@ class Sudoku:
 
             if unfilledPosBeforeProcess == len(self.unfilledPosValues):
                 print("analyze tech pos")
-                if not self.analyzeTechPos():
-                    print("analyze preemptive sets")
-                    
-                    sys.stdin.read(1)
-                    
-                    if not self.analyzePreemptiveSets():
-                        pass
-                        #print("No way to continue.")
-                        #break;
-            #    continue
-            #    pass
+                if self.analyzeTechPos():
+                    continue
 
+                print("analyze preemptive sets")
+                if self.analyzePreemptiveSets():
+                    continue
+
+                print("analyze tree decision")    
+                if not self.analyzeTreeDecision():
+                    print("No way to continue.")
+                    break;
+
+            print("Deep level: %i" % self.deepLevel)
             self.draw_sudoku()
             sys.stdin.read(1)
+
+        return len(self.unfilledPosValues) == 0
 
 
     def loadPosValues(self):
@@ -254,8 +262,7 @@ class Sudoku:
 
                 #if there are any values found that are uniques for the row then calls the remove logic
                 if len(posValues) != 0:
-                    print("Block %i Row %i pos values in the row %s " % (block, row, str(posValues)))
-                    couldAdvance = self.removePossibleValuesRow(row, self.colsByBlock.get(block), posValues)
+                    couldAdvance = couldAdvance or self.removePossibleValuesRow(row, self.colsByBlock.get(block), posValues)
 
             #fills in map the unique pos values for each col
             for col in range (coord.y, coord.y + 3):
@@ -276,10 +283,7 @@ class Sudoku:
 
                 #if there are any values found that are uniques for the row then calls the remove logic
                 if len(posValues) != 0:
-                    print("Block %i Col %i pos values in the col %s " % (block, col, str(posValues)))
-                    couldAdvance = self.removePossibleValuesCol(self.rowsByBlock.get(block), col, posValues)
-
-            print("Block %i analyzed" % block)
+                    couldAdvance = couldAdvance or self.removePossibleValuesCol(self.rowsByBlock.get(block), col, posValues)
 
         return couldAdvance
 
@@ -310,8 +314,7 @@ class Sudoku:
 
                         if len(preemptivePos) > 1 and len(preemptivePos) == markUpSize:
                             #remove positions from block
-                            print("Preempt by Block %i, Row %i, Col %i, Set %s" % (block, row, col, str(self.unfilledPosValues[str(row)+str(col)])))
-                            couldAdvance = self.removePossibleValuesBlock(preemptivePos, block, self.unfilledPosValues[str(row)+str(col)])
+                            couldAdvance = couldAdvance or self.removePossibleValuesBlock(preemptivePos, block, self.unfilledPosValues[str(row)+str(col)])
                             
 
         #look for preemptive sets in rows
@@ -330,8 +333,7 @@ class Sudoku:
                                     preemptiveColPos.add(colAux)
 
                     if len(preemptiveColPos) > 1 and len(preemptiveColPos) == markUpSize:
-                        print("Preempt by Row , Row %i, Col %i, Set %s" % (row, col, str(self.unfilledPosValues[str(row)+str(col)])))
-                        couldAdvance = self.removePossibleValuesRow(row, preemptiveColPos, self.unfilledPosValues[str(row)+str(col)])
+                        couldAdvance = couldAdvance or self.removePossibleValuesRow(row, preemptiveColPos, self.unfilledPosValues[str(row)+str(col)])
                         
         #look for preemptive sets in cols
         for col in range (0,9):
@@ -349,13 +351,43 @@ class Sudoku:
                                     preemptiveRowPos.add(rowAux)
 
                     if len(preemptiveRowPos) > 1 and len(preemptiveRowPos) == markUpSize:
-                        print("Preempt by Col , Row %i, Col %i, Set %s" % (row, col, str(self.unfilledPosValues[str(row)+str(col)])))
-                        couldAdvance = self.removePossibleValuesCol(preemptiveRowPos, col, self.unfilledPosValues[str(row)+str(col)])
-
-                        
-        print("Preentive sets analyzed")
-
+                        couldAdvance = couldAdvance or self.removePossibleValuesCol(preemptiveRowPos, col, self.unfilledPosValues[str(row)+str(col)])
+           
         return couldAdvance
+
+
+    def analyzeTreeDecision(self):
+        
+        targetValues = 2
+        # loop unfilled positions looking for one where has only two possible values, in case does not found increments targetValues
+        while True:
+            #loop positions
+            for key in self.unfilledPosValues.keys():
+                #if a position has 0 options means the solution didn't go well
+                if len(self.unfilledPosValues.get(key)) == 0:
+                    return False
+
+                if len(self.unfilledPosValues.get(key)) == targetValues:
+                    #for each possible values clones the sudoku considering that value as true and tries to solve it
+                    for value in self.unfilledPosValues.get(key):
+                        print("Cloning considering Key %s, Value %s" % (key, value))
+                        
+                        #clone
+                        copySudoku = copy.deepcopy(self)
+                        copySudoku.matrix = copy.deepcopy(self.matrix)
+                        copySudoku.unfilledPosValues = copy.deepcopy(self.unfilledPosValues)
+                        copySudoku.deepLevel += 1
+
+                        copySudoku.fillNumber(int(key[0]), int(key[1]), value, "Tree Decision")
+
+                        if copySudoku.deepSolve():
+                            print("Solution found by Tree Decision")
+                            self.matrix = copy.deepcopy(copySudoku.matrix)
+                            self.unfilledPosValues = copy.deepcopy(copySudoku.unfilledPosValues)
+                            return True
+                            
+            targetValues += 1
+        
 
 
     #####################################################
@@ -477,9 +509,6 @@ class Sudoku:
         
         result = ''
         for row in range (0,rows):  
-            #if row % 3 == 0:
-            #result += '-------------------\n'
-            
             if row % 3 == 0:   
                 result += '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n'
             else:
@@ -487,14 +516,8 @@ class Sudoku:
 
             result += '|           .           .           |           .           .           |           .           .           |\n'
 
-            #if row % 3 == 1 or row % 3 == 2:
-            #    result += '| | | | | | | | | |\n'
-
             line = ''
             for col in range (0,cols):
-                #if col % 3 == 0:
-                #line += '|'
-
                 if col % 3 == 0:
                     line += '|'
                 else:
@@ -516,11 +539,7 @@ class Sudoku:
                     for i in range(0, math.ceil(blankSpaceQuant/2)):
                         line += ' '
 
-                #if col % 3 == 0 or col % 3 == 1:
-                #    line += ' '
-
             line += '|'
-
             result += line + '\n'
             result += '|           .           .           |           .           .           |           .           .           |\n'
         
