@@ -11,7 +11,7 @@
 368794125
 149825736
 
-
+#OK
 ### Very Easy
 
 n8n5762nn
@@ -25,7 +25,7 @@ n9n2nn37n
 n4nnnnnn6
 
 
-
+#OK
 ### Easy
 
 nn6nn23n4 
@@ -38,7 +38,7 @@ nnn6nnnn8
 7nnn2n453 
 nnn37nn69
 
-
+#OK
 ### Normal
 
 nnnnnnn84
@@ -51,7 +51,7 @@ n5nnn9nn6
 32n8nn1n9
 nn95nn8nn
 
-
+#OK
 ### Dificil
 
 n7nn9nn52
@@ -67,6 +67,7 @@ n4nn2n6n8
 
 ### Muy Dificil
 
+#OK
 n63n8n4nn
 n9nnn4nn7
 4nnn2nnnn
@@ -77,6 +78,7 @@ nn8nnn2n4
 nn5n36nnn
 n3n87nn26
 
+#OK
 nn4nnn7nn
 nnn73nn9n
 nnnn8nn5n
@@ -103,6 +105,7 @@ nn8nnnn7n
 
 ### Experto de Mica 
 
+#OK
 58nnnnn12
 nnnnnnnn3
 n1n2nn59n
@@ -124,3 +127,17 @@ n7nnnnnn8
 nnnnn9nn7
 nnnnn6n4n
 6914n3nnn
+
+
+
+#39 missing
+#pi.math.cornell.edu
+2957nn86n
+n31865n2n
+8n6nnnnnn
+nn7n5nnn6
+nnn387nnn
+5nnn167nn
+nnn5nn1n9
+n2n6nn35n
+n54nn8672

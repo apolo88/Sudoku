@@ -1,4 +1,5 @@
 import sys
+import math
 
 class Sudoku:
     
@@ -138,9 +139,16 @@ class Sudoku:
                         continue
 
             if unfilledPosBeforeProcess == len(self.unfilledPosValues):
-                print("look for alayze tech pos")
-            
-                self.analyzeTechPos()
+                print("analyze tech pos")
+                if not self.analyzeTechPos():
+                    print("analyze preemptive sets")
+                    
+                    sys.stdin.read(1)
+                    
+                    if not self.analyzePreemptiveSets():
+                        pass
+                        #print("No way to continue.")
+                        #break;
             #    continue
             #    pass
 
@@ -222,6 +230,7 @@ class Sudoku:
     ### TECH DISCARD METHOD
 
     def analyzeTechPos(self):
+        couldAdvance = False
         for block in self.blockStartCordMap.keys():
             
             coord = self.blockStartCordMap.get(block)      
@@ -246,7 +255,7 @@ class Sudoku:
                 #if there are any values found that are uniques for the row then calls the remove logic
                 if len(posValues) != 0:
                     print("Block %i Row %i pos values in the row %s " % (block, row, str(posValues)))
-                    self.removePossibleValuesRow(row, self.colsByBlock.get(block), posValues)
+                    couldAdvance = self.removePossibleValuesRow(row, self.colsByBlock.get(block), posValues)
 
             #fills in map the unique pos values for each col
             for col in range (coord.y, coord.y + 3):
@@ -268,23 +277,85 @@ class Sudoku:
                 #if there are any values found that are uniques for the row then calls the remove logic
                 if len(posValues) != 0:
                     print("Block %i Col %i pos values in the col %s " % (block, col, str(posValues)))
-                    self.removePossibleValuesCol(self.rowsByBlock.get(block), col, posValues)
-
-            
-            
-            
-            # create list of unfilled positions with the possible values
-            # put them in a map by row and col inside the block only the values that are unique in that row or col
-
-            
-
-            #loop the rows and cols just assigned and call the methods to remove possibilities 
-            #for row in techPosByRow.keys():
-            #    self.removePossibleValuesRow(row, self.colsByBlock.get(block), techPosByRow.get(row))
+                    couldAdvance = self.removePossibleValuesCol(self.rowsByBlock.get(block), col, posValues)
 
             print("Block %i analyzed" % block)
-            #for col in techPosByCol.keys():
-            #    removePossibleValuesCol(self.rowsByBlock.get(block), col, techPosByRow.get(col))
+
+        return couldAdvance
+
+
+    def analyzePreemptiveSets(self):
+        couldAdvance = False
+        
+        #look for preemptive sets in blocks
+        for block in self.blockStartCordMap.keys():
+            
+            coord = self.blockStartCordMap.get(block)      
+            
+            #fills in map the unique pos values for each row
+            for row in range (coord.x, coord.x + 3):
+                for col in range (coord.y, coord.y + 3):
+                    if self.matrix[row][col] == 'n':
+
+                        markUpSize = len(self.unfilledPosValues[str(row)+str(col)])
+                        preemptivePos = {str(row)+str(col)}
+
+                        #check the other positions to see if matches
+                        for rowAux in range (coord.x, coord.x + 3):
+                            for colAux in range (coord.y, coord.y + 3):
+                                if self.matrix[rowAux][colAux] == 'n':
+                                    if rowAux != row or colAux != col:
+                                        if self.unfilledPosValues[str(rowAux)+str(colAux)].issubset(self.unfilledPosValues[str(row)+str(col)]):
+                                            preemptivePos.add(str(rowAux)+str(colAux))
+
+                        if len(preemptivePos) > 1 and len(preemptivePos) == markUpSize:
+                            #remove positions from block
+                            print("Preempt by Block %i, Row %i, Col %i, Set %s" % (block, row, col, str(self.unfilledPosValues[str(row)+str(col)])))
+                            couldAdvance = self.removePossibleValuesBlock(preemptivePos, block, self.unfilledPosValues[str(row)+str(col)])
+                            
+
+        #look for preemptive sets in rows
+        for row in range (0, 9):
+            for col in range (0,9):
+                if self.matrix[row][col] == 'n':
+
+                    markUpSize = len(self.unfilledPosValues[str(row)+str(col)])
+                    preemptiveColPos = {col}
+
+                    #check the other positions to see if matches
+                    for colAux in range (0,9):
+                        if self.matrix[row][colAux] == 'n':
+                            if colAux != col:
+                                if self.unfilledPosValues[str(row)+str(colAux)].issubset(self.unfilledPosValues[str(row)+str(col)]):
+                                    preemptiveColPos.add(colAux)
+
+                    if len(preemptiveColPos) > 1 and len(preemptiveColPos) == markUpSize:
+                        print("Preempt by Row , Row %i, Col %i, Set %s" % (row, col, str(self.unfilledPosValues[str(row)+str(col)])))
+                        couldAdvance = self.removePossibleValuesRow(row, preemptiveColPos, self.unfilledPosValues[str(row)+str(col)])
+                        
+        #look for preemptive sets in cols
+        for col in range (0,9):
+            for row in range (0, 9):
+                if self.matrix[row][col] == 'n':
+
+                    markUpSize = len(self.unfilledPosValues[str(row)+str(col)])
+                    preemptiveRowPos = {row}
+
+                    #check the other positions to see if matches
+                    for rowAux in range (0,9):
+                        if self.matrix[rowAux][col] == 'n':
+                            if rowAux != row:
+                                if self.unfilledPosValues[str(rowAux)+str(col)].issubset(self.unfilledPosValues[str(row)+str(col)]):
+                                    preemptiveRowPos.add(rowAux)
+
+                    if len(preemptiveRowPos) > 1 and len(preemptiveRowPos) == markUpSize:
+                        print("Preempt by Col , Row %i, Col %i, Set %s" % (row, col, str(self.unfilledPosValues[str(row)+str(col)])))
+                        couldAdvance = self.removePossibleValuesCol(preemptiveRowPos, col, self.unfilledPosValues[str(row)+str(col)])
+
+                        
+        print("Preentive sets analyzed")
+
+        return couldAdvance
 
 
     #####################################################
@@ -306,33 +377,46 @@ class Sudoku:
     def removePossibleValues(self, row, col, blockNumber, num):
         self.removePossibleValuesRow(row, [col], [num])
         self.removePossibleValuesCol([row], col, [num])
-        self.removePossibleValuesBlock(row, col, blockNumber, num)
+        self.removePossibleValuesBlock({str(row)+str(col)}, blockNumber, [num])
 
 
     def removePossibleValuesRow(self, row, currentCols, nums):
+        couldRemove = False
         for col in set([0,1,2,3,4,5,6,7,8]) - set(currentCols):
             key = str(row)+str(col)
             for num in nums:
                 if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
                     self.unfilledPosValues[key].remove(num)
+                    couldRemove = True
+
+        return couldRemove
 
 
     def removePossibleValuesCol(self, currentRows, col, nums):
+        couldRemove = False
         for row in set([0,1,2,3,4,5,6,7,8]) - set(currentRows):
             key = str(row)+str(col)
             for num in nums:
                 if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
                     self.unfilledPosValues[key].remove(num)
+                    couldRemove = True
+        
+        return couldRemove
 
-
-    def removePossibleValuesBlock(self, currentRow, currentCol, blockNumber, num):
+    
+    def removePossibleValuesBlock(self, currentPos, blockNumber, nums):
+        couldRemove = False
         coord = self.blockStartCordMap.get(blockNumber)
         for row in range (coord.x, coord.x + 3):
             for col in range (coord.y, coord.y + 3):
-                if currentRow != row or currentCol != col:
-                    key = str(row)+str(col)
-                    if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
-                        self.unfilledPosValues[key].remove(num)
+                key = str(row)+str(col)
+                if key not in currentPos:
+                    for num in nums:
+                        if key in self.unfilledPosValues and num in self.unfilledPosValues[key]:
+                            self.unfilledPosValues[key].remove(num)
+                            couldRemove = True
+
+        return couldRemove
 
 
     #####################################################
@@ -393,27 +477,54 @@ class Sudoku:
         
         result = ''
         for row in range (0,rows):  
-            if row % 3 == 0:
-                result += '-------------------\n'
+            #if row % 3 == 0:
+            #result += '-------------------\n'
             
-            if row % 3 == 1 or row % 3 == 2:
-                result += '|     |     |     |\n'
+            if row % 3 == 0:   
+                result += '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n'
+            else:
+                result += '-------------------------------------------------------------------------------------------------------------\n'
+
+            result += '|           .           .           |           .           .           |           .           .           |\n'
+
+            #if row % 3 == 1 or row % 3 == 2:
+            #    result += '| | | | | | | | | |\n'
 
             line = ''
             for col in range (0,cols):
+                #if col % 3 == 0:
+                #line += '|'
+
                 if col % 3 == 0:
                     line += '|'
+                else:
+                    line += '.'
                 
-                line += self.matrix[row][col]
+                if self.matrix[row][col] != 'n':
+                    line += '     ' + self.matrix[row][col] + '     '
+                else:
+                    blankSpaceQuant = 9 - len(self.unfilledPosValues.get(str(row) + str(col)))
+                    
+                    for i in range(0, blankSpaceQuant//2):
+                        line += ' '
+                    
+                    line += '('
+                    for value in self.unfilledPosValues.get(str(row) + str(col)):
+                        line += value
+                    line += ')'
 
-                if col % 3 == 0 or col % 3 == 1:
-                    line += ' '
+                    for i in range(0, math.ceil(blankSpaceQuant/2)):
+                        line += ' '
+
+                #if col % 3 == 0 or col % 3 == 1:
+                #    line += ' '
 
             line += '|'
 
             result += line + '\n'
+            result += '|           .           .           |           .           .           |           .           .           |\n'
         
-        result += '-------------------'
+        result += '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n'
         
         return result
 

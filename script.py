@@ -21,6 +21,8 @@ def clear_screen(self):
 def solveSudoku():
     sudoku = Sudoku("files/sudokuToSolve.txt")
     sudoku.solve()
+
+    print("Sudoku correct : %s" % sudoku.verify())
     #sudoku.draw_sudoku()
     #sudoku.save_to_file()
 
